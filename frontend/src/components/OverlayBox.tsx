@@ -13,7 +13,7 @@ export default function OverlayBox({ face }: OverlayBoxProps) {
 
     return (
         <div
-            className={`absolute border-2 rounded-lg transition-all duration-300 ${face.name === 'Unknown' ? 'border-white/30' : 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]'
+            className={`absolute border rounded-lg transition-all duration-300 ${face.name === 'Unknown' ? 'border-zinc-500/30' : 'border-emerald-400/50'
                 }`}
             style={{
                 top: `${top}px`,
@@ -22,7 +22,7 @@ export default function OverlayBox({ face }: OverlayBoxProps) {
                 height: `${bottom - top}px`,
             }}
         >
-            <div className={`absolute -top-7 left-0 px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${face.name === 'Unknown' ? 'bg-neutral-800 text-white/70' : 'bg-blue-600 text-white'
+            <div className={`absolute -top-5 left-0 px-2 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap transform scale-x-[-1] backdrop-blur-md shadow-lg ${face.name === 'Unknown' ? 'bg-black/40 text-zinc-400 border border-zinc-700/50' : 'bg-emerald-900/80 text-emerald-100 border border-emerald-500/30'
                 }`}>
                 {face.name}
             </div>

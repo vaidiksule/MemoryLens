@@ -5,7 +5,7 @@ export class RecognitionWebSocket {
     private onMessage: (data: any) => void;
 
     constructor(onMessage: (data: any) => void) {
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001/ws/recognition';
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/recognition';
         this.url = wsUrl;
         this.onMessage = onMessage;
     }

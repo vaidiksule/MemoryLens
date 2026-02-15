@@ -52,35 +52,89 @@ class EmbeddingCache:
 
     def __init__(self):
         self.cache = []  # List of (person_id, name, embedding_np)
+        self.last_unknown_embedding = None  # (embedding_np, timestamp)
+        self.last_unknown_timestamp = 0
+        self.last_seen_known_id = None
+        self.last_seen_known_timestamp = 0
 
     def update(self, people_list):
         self.cache = [
             (str(p.id), p.name, np.array(p.face_embedding)) for p in people_list
         ]
 
+    def set_last_unknown(self, embedding: np.ndarray):
+        """Updates the most recently seen unknown face."""
+        self.last_unknown_embedding = embedding
+        import time
+
+        self.last_unknown_timestamp = time.time()
+
+    def set_last_seen_known(self, person_id: str):
+        """Updates the most recently seen known person."""
+        self.last_seen_known_id = person_id
+        import time
+
+        self.last_seen_known_timestamp = time.time()
+
+    def get_last_unknown(self, ttl: int = 5) -> Optional[np.ndarray]:
+        """Returns the last unknown embedding if seen within TTL seconds."""
+        import time
+
+        if (
+            self.last_unknown_embedding is not None
+            and (time.time() - self.last_unknown_timestamp) < ttl
+        ):
+            return self.last_unknown_embedding
+        return None
+
+    def get_last_seen_known(self, ttl: int = 5) -> Optional[str]:
+        """Returns the last known person_id if seen within TTL seconds."""
+        import time
+
+        if (
+            self.last_seen_known_id is not None
+            and (time.time() - self.last_seen_known_timestamp) < ttl
+        ):
+            return self.last_seen_known_id
+        return None
+
     def match(
-        self, target_embedding: List[float], threshold: float = 0.45
+        self, target_embedding: List[float], threshold: float = 0.55
     ) -> Optional[Tuple[str, str, float]]:
         """
         Matches a target embedding against the cache.
         Returns (person_id, name, similarity) if match found.
         """
-        if not self.cache:
-            return None
-
         target_emb_np = np.array(target_embedding)
+
+        if not self.cache:
+            # If cache is empty, this is technically an unknown face (or first face)
+            # We don't return here immediately, we let it fall through to 'return None'
+            pass
+
         best_match = None
         max_sim = -1
 
         for person_id, name, cached_emb in self.cache:
             sim = cosine_similarity(target_emb_np, cached_emb)
+            # print(f"DEBUG: Comparing with {name} ({person_id}): sim={sim:.3f}")
             if sim > max_sim:
                 max_sim = sim
                 best_match = (person_id, name)
 
         if max_sim >= threshold:
+            # We found a match, update simple tracking
+            self.set_last_seen_known(best_match[0])
+            print(f"DEBUG: MATCH FOUND: {best_match[1]} with sim={max_sim:.3f}")
             return (*best_match, max_sim)
 
+        if max_sim > 0.3:
+            print(
+                f"DEBUG: No match found. Best sim was {max_sim:.3f} for {best_match[1] if best_match else 'None'}"
+            )
+
+        # No match found -> It's unknown
+        self.set_last_unknown(target_emb_np)
         return None
 
 

@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, GetCoreSchemaHandler, ConfigDict
 from pydantic_core import core_schema
 from typing import List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 from dotenv import load_dotenv
 
@@ -52,7 +52,7 @@ class Person(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     name: str
     face_embedding: List[float]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Memory(BaseModel):
@@ -67,7 +67,7 @@ class Memory(BaseModel):
     key_topics: List[str]
     emotional_tone: str
     follow_up_suggestion: Optional[str] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # Database helpers
@@ -80,10 +80,24 @@ async def add_person(name: str, embedding: List[float]):
     person = {
         "name": name,
         "face_embedding": embedding,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
     }
+    print(f"DEBUG: Adding person {name} to DB...")
     result = await db.people.insert_one(person)
     return str(result.inserted_id)
+
+
+async def update_person_name(person_id: str, new_name: str):
+    """Updates the name of an existing person."""
+    try:
+        await db.people.update_one(
+            {"_id": ObjectId(person_id)}, {"$set": {"name": new_name}}
+        )
+        print(f"DEBUG: Updated person {person_id} name to {new_name}")
+        return True
+    except Exception as e:
+        print(f"Error updating person name: {e}")
+        return False
 
 
 async def add_memory(
@@ -101,8 +115,9 @@ async def add_memory(
         "key_topics": topics,
         "emotional_tone": tone,
         "follow_up_suggestion": follow_up,
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
     }
+    print(f"DEBUG: Adding memory for person {person_id}...")
     result = await db.memories.insert_one(memory)
     return str(result.inserted_id)
 
@@ -114,3 +129,34 @@ async def get_latest_memory(person_id: str):
     if memory:
         return Memory(**memory)
     return None
+
+
+async def get_person_memories(person_id: str):
+    memories_cursor = db.memories.find({"person_id": ObjectId(person_id)}).sort(
+        "timestamp", -1
+    )
+    return [Memory(**m) async for m in memories_cursor]
+
+
+async def find_person_by_name(name: str):
+    """Finds a person by name (case-insensitive)."""
+    person = await db.people.find_one(
+        {"name": {"$regex": f"^{name}$", "$options": "i"}}
+    )
+    if person:
+        return Person(**person)
+    return None
+
+
+async def get_all_people_with_latest_memory():
+    people = await get_all_people()
+    results = []
+    for person in people:
+        latest = await get_latest_memory(str(person.id))
+        results.append(
+            {
+                "person": person,
+                "latest_memory": latest,
+            }
+        )
+    return results

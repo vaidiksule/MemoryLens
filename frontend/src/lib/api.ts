@@ -1,5 +1,5 @@
 // src/lib/api.ts
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export async function registerFace(name: string, imageBase64: string) {
     const formData = new FormData();
@@ -34,10 +34,11 @@ export async function transcribeAudio(audioBlob: Blob) {
     return response.json();
 }
 
-export async function addMemory(personId: string, transcript: string) {
+export async function addMemory(personId: string, transcript: string, imageBase64?: string) {
     const formData = new FormData();
-    formData.append('person_id', personId);
+    if (personId) formData.append('person_id', personId);
     formData.append('transcript', transcript);
+    if (imageBase64) formData.append('image_base64', imageBase64);
 
     const response = await fetch(`${API_URL}/add-memory`, {
         method: 'POST',
@@ -48,5 +49,17 @@ export async function addMemory(personId: string, transcript: string) {
         throw new Error('Failed to add memory');
     }
 
+    return response.json();
+}
+
+export async function getPeople() {
+    const response = await fetch(`${API_URL}/people`);
+    if (!response.ok) throw new Error('Failed to fetch people');
+    return response.json();
+}
+
+export async function getPersonMemories(personId: string) {
+    const response = await fetch(`${API_URL}/people/${personId}/memories`);
+    if (!response.ok) throw new Error('Failed to fetch memories');
     return response.json();
 }
