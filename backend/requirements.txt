@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+insightface
+onnxruntime
+opencv-python-headless
+motor
+pymongo
+python-multipart
+deepgram-sdk
+google-generativeai
+numpy
+pydantic
+python-dotenv
+websockets
+python-jose[cryptography]
+passlib[bcrypt]
